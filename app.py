@@ -1,25 +1,29 @@
 import pandas as pd
+#from app import app
+import os 
+import csv
 from sklearn.model_selection import train_test_split
-from flask import Flask,request,render_template
+from flask import Flask,request,render_template,redirect,session, url_for
 import pickle
 app=Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=["GET", "POST"])
 def home():
-    
-    return render_template('diabetes.html')
-@app.route('/template',methods=['POST'])
+    return render_template('diabetes.html' )
+@app.route('/template', methods=["GET", "POST"])
 def template():
-    print(type(request.form.get("csvfile")))
-    data = pd.read_csv("diabetes.csv")
-    X = data.drop(["Outcome"], axis=1)
-    y = data["Outcome"]
-    #X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=100)
-        
-    model=pickle.load(open("model.bin",'rb'))
-    outp = model.predict(X) 
-    data["predicted"] = outp
-    data.to_excel("output.xlsx")
-    return render_template("template.html")
+    data = []
+    if request.method == 'POST':
+        uploaded_file = request.files['csvfile'] # This line uses the same variable and worked fine
+        if not os.path.isdir('static'):
+            os.mkdir('static')
+        filepath = os.path.join('static',uploaded_file.filename)
+        uploaded_file.save(filepath)
+        data = pd.read_csv(filepath)
+        columns = ['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness', 'Insulin','BMI', 'DiabetesPedigreeFunction', 'Age']
+        data = data[columns]
+        my_model = pickle.load(open("model.bin",'rb'))
+        data['output']=my_model.predict(data)
+    return render_template('template.html', tables=[data.to_html()], titles=[''])
 if __name__ == "__main__":
     app.run(debug=True)    
